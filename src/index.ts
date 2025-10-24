@@ -14,7 +14,7 @@ app.post("/api/signup", signupValidator, async (c) => {
     const userId = await insertUser(db, email, password);
     const token = await generateToken(userId);
     setCookie(c, "authToken", token, cookieOpts);
-    return c.json({ message: "User registered successfully", user: { id: userId, email } }, 201);
+    return c.json({ message: "User registered successfully", user: { id: userId, email } });
   } catch (error) {
     if (error instanceof Error && error.message.includes("UNIQUE constraint failed")) {
       return c.json({ errors: ["Email already in use"] }, 409);
