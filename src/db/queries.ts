@@ -11,3 +11,13 @@ export const insertUser = async (db: Database, email: string, password: string) 
   const user = insertQuery.get(randomUUID(), email, passwordHash) as { id: UUID };
   return user.id;
 };
+
+export const getUserByEmail = (db: Database, email: string) => {
+  const selectQuery = db.query(
+    `SELECT id, email, password_hash
+     FROM users
+     WHERE email = ?;`
+  );
+  const user = selectQuery.get(email) as { id: UUID; password_hash: string } | null;
+  return user;
+};
