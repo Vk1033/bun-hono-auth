@@ -13,3 +13,10 @@ export const loginReq = (email = "test@test.com", password = "password123") => {
     body: JSON.stringify({ email, password }),
   });
 };
+
+export const logoutReq = () => {
+  return new Request("http://localhost:3000/api/logout", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+};
