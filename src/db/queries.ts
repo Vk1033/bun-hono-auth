@@ -1,33 +1,27 @@
-import { Database } from "bun:sqlite";
 import { type UUID, randomUUID } from "crypto";
+import { BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
+import { users } from "./schema";
+import { eq } from "drizzle-orm";
 
-export const insertUser = async (db: Database, email: string, password: string) => {
+export const insertUser = async (db: BunSQLiteDatabase, email: string, password: string) => {
   const passwordHash = await Bun.password.hash(password);
-  const insertQuery = db.query(
-    `INSERT INTO users (id, email, password_hash)
-     VALUES (?, ?, ?)
-     RETURNING id;`
-  );
-  const user = insertQuery.get(randomUUID(), email, passwordHash) as { id: UUID };
+  const [user] = await db
+    .insert(users)
+    .values({
+      id: randomUUID(),
+      email,
+      passwordHash,
+    })
+    .returning({ id: users.id });
   return user.id;
 };
 
-export const getUserByEmail = (db: Database, email: string) => {
-  const userQuery = db.query(
-    `SELECT id, password_hash
-     FROM users
-     WHERE email = ?;`
-  );
-  const user = userQuery.get(email) as { id: UUID; password_hash: string } | null;
+export const getUserByEmail = (db: BunSQLiteDatabase, email: string) => {
+  const user = db.select({ id: users.id, passwordHash: users.passwordHash }).from(users).where(eq(users.email, email)).get();
   return user;
 };
 
-export const getUserById = (db: Database, id: string) => {
-  const userQuery = db.query(
-    `SELECT id, email
-     FROM users
-     WHERE id = ?;`
-  );
-  const user = userQuery.get(id) as { id: UUID; email: string } | null;
+export const getUserById = (db: BunSQLiteDatabase, id: string) => {
+  const user = db.select({ id: users.id, email: users.email }).from(users).where(eq(users.id, id)).get();
   return user;
 };

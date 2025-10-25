@@ -3,21 +3,20 @@ import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
 import { createTestDb } from "./test/test-db";
 import { Database } from "bun:sqlite";
 import { loginReq, logoutReq, signupReq } from "./test/test-helpers";
+import { BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
 
-let db: Database;
-
-mock.module("../src/db/db.ts", () => {
-  return {
-    dbConn: () => db,
-  };
-});
+let db: BunSQLiteDatabase;
+let sqlite: Database;
 
 beforeEach(() => {
-  db = createTestDb();
+  ({ sqlite, db } = createTestDb());
+  mock.module("../src/db/db.ts", () => {
+    return { db };
+  });
 });
 
 afterEach(() => {
-  db.close();
+  sqlite.close();
 });
 
 describe("signup endpoint", () => {

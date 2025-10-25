@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { dbConn } from "./db/db";
+import { db } from "./db/db";
 import { signupValidator } from "./schemas/signup-schema";
 import { getUserByEmail, getUserById, insertUser } from "./db/queries";
 import { cookieOpts, generateToken } from "./helpers";
@@ -13,7 +13,6 @@ app
   .use("/api/auth/*", jwt({ secret: process.env.JWT_SECRET!, cookie: "authToken" }))
   .use("/api/*", csrf())
   .post("/api/signup", signupValidator, async (c) => {
-    const db = dbConn();
     const { email, password } = c.req.valid("json");
     try {
       const userId = await insertUser(db, email, password);
@@ -29,7 +28,6 @@ app
     }
   })
   .post("/api/login", signupValidator, async (c) => {
-    const db = dbConn();
     const { email, password } = c.req.valid("json");
 
     try {
@@ -38,7 +36,7 @@ app
         return c.json({ errors: ["Invalid credentials"] }, 401);
       }
 
-      const passwordMatch = await Bun.password.verify(password, user.password_hash);
+      const passwordMatch = await Bun.password.verify(password, user.passwordHash);
       if (!passwordMatch) {
         return c.json({ errors: ["Invalid credentials"] }, 401);
       }
@@ -61,7 +59,6 @@ app
     return c.json({ message: "Logged out successfully" });
   })
   .get("/api/auth/me", async (c) => {
-    const db = dbConn();
     const payload = c.get("jwtPayload");
     try {
       const user = getUserById(db, payload.sub);

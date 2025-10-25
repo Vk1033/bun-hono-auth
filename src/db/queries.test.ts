@@ -1,15 +1,17 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { insertUser, getUserByEmail } from "./queries";
+import { insertUser, getUserByEmail, getUserById } from "./queries";
 import { createTestDb } from "../test/test-db";
+import { BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
 import { Database } from "bun:sqlite";
 
-let db: Database;
+let db: BunSQLiteDatabase;
+let sqlite: Database;
 beforeEach(() => {
-  db = createTestDb();
+  ({ sqlite, db } = createTestDb());
 });
 
 afterEach(() => {
-  db.close();
+  sqlite.close();
 });
 
 describe("insertUser", () => {
@@ -51,11 +53,28 @@ describe("getUserByEmail", () => {
     const user = getUserByEmail(db, email);
     expect(user).toBeDefined();
     expect(user!.id).toBe(userId);
-    expect(user!.password_hash).toBeDefined();
+    expect(user!.passwordHash).toBeDefined();
   });
 
   it("should return null for non-existing email", () => {
     const user = getUserByEmail(db, "nonexistent@test.com");
-    expect(user).toBeNull();
+    expect(user).toBeUndefined();
+  });
+});
+
+describe("getUserById", () => {
+  it("should retrieve a user by ID", async () => {
+    const email = "test@test.com";
+    const password = "test@123";
+    const userId = await insertUser(db, email, password);
+    const user = getUserById(db, userId);
+    expect(user).toBeDefined();
+    expect(user!.id).toBe(userId);
+    expect(user!.email).toBe(email);
+  });
+
+  it("should return null for non-existing ID", () => {
+    const user = getUserById(db, "nonexistent-id");
+    expect(user).toBeUndefined();
   });
 });
