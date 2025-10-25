@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { db } from "./db/db";
 import { signupValidator } from "./schemas/signup-schema";
 import { getUserByEmail, getUserById, insertUser } from "./db/queries";
-import { cookieOpts, generateToken } from "./helpers";
+import { cookieOpts, generateAccessToken, generateRefreshToken } from "./helpers";
 import { deleteCookie, setCookie } from "hono/cookie";
 import { csrf } from "hono/csrf";
 import { jwt } from "hono/jwt";
@@ -10,15 +10,17 @@ import { jwt } from "hono/jwt";
 const app = new Hono();
 
 app
-  .use("/api/auth/*", jwt({ secret: process.env.JWT_SECRET!, cookie: "authToken" }))
+  .use("/api/refresh", jwt({ secret: process.env.REFRESH_TOKEN_SECRET!, cookie: "refreshToken" }))
+  .use("/api/auth/*", jwt({ secret: process.env.ACCESS_TOKEN_SECRET!, cookie: "accessToken" }))
   .use("/api/*", csrf())
   .post("/api/signup", signupValidator, async (c) => {
     const { email, password } = c.req.valid("json");
     try {
       const userId = await insertUser(db, email, password);
-      const token = await generateToken(userId);
-      setCookie(c, "authToken", token, cookieOpts);
-      return c.json({ message: "User registered successfully", user: { id: userId, email } });
+      const accessToken = await generateAccessToken(userId); // 15 minutes
+      const refreshToken = await generateRefreshToken(userId); // 7 days
+      setCookie(c, "refreshToken", refreshToken, cookieOpts);
+      return c.json({ accessToken, message: "User registered successfully", user: { id: userId, email } });
     } catch (error) {
       if (error instanceof Error && error.message.includes("UNIQUE constraint failed")) {
         return c.json({ errors: ["Email already in use"] }, 409);
@@ -41,16 +43,17 @@ app
         return c.json({ errors: ["Invalid credentials"] }, 401);
       }
 
-      const token = await generateToken(user.id);
-      setCookie(c, "authToken", token, cookieOpts);
-      return c.json({ message: "Login successful", user: { id: user.id, email } });
+      const accessToken = await generateAccessToken(user.id); // 15 minutes
+      const refreshToken = await generateRefreshToken(user.id); // 7 days
+      setCookie(c, "refreshToken", refreshToken, cookieOpts);
+      return c.json({ accessToken, message: "Login successful", user: { id: user.id, email } });
     } catch (error) {
       console.error("Login error:", error);
       return c.json({ errors: ["Internal Server Error"] }, 500);
     }
   })
   .post("/api/logout", (c) => {
-    deleteCookie(c, "authToken", {
+    deleteCookie(c, "refreshToken", {
       path: "/",
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

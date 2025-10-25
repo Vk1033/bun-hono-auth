@@ -27,12 +27,13 @@ describe("signup endpoint", () => {
 
     expect(res.status).toBe(200);
     expect(json).toEqual({
+      accessToken: expect.any(String),
       message: "User registered successfully",
       user: { id: expect.any(String), email: "test@test.com" },
     });
 
     const cookies = res.headers.get("set-cookie");
-    expect(cookies).toMatch(/authToken=/);
+    expect(cookies).toMatch(/refreshToken=/);
   });
 
   it("should return 409 for duplicate email", async () => {
@@ -76,12 +77,13 @@ describe("login endpoint", () => {
 
     expect(res.status).toBe(200);
     expect(json).toEqual({
+      accessToken: expect.any(String),
       message: "Login successful",
       user: { id: expect.any(String), email: "test@test.com" },
     });
 
     const cookies = res.headers.get("set-cookie");
-    expect(cookies).toMatch(/authToken=/);
+    expect(cookies).toMatch(/refreshToken=/);
   });
 
   it("return 400 for missing email or password", async () => {
@@ -118,6 +120,6 @@ describe("logout endpoint", () => {
     });
 
     const cookies = res.headers.get("set-cookie");
-    expect(cookies).toMatch(/authToken=;/);
+    expect(cookies).toMatch(/refreshToken=;/);
   });
 });
