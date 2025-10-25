@@ -20,3 +20,22 @@ export const logoutReq = () => {
     headers: { "Content-Type": "application/json" },
   });
 };
+
+export const refreshReq = (refreshToken: string) => {
+  return new Request("http://localhost:3000/api/refresh", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: refreshToken,
+    },
+  });
+};
+
+export const authReq = (accessToken: string) => {
+  return new Request("http://localhost:3000/api/auth/me", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+};

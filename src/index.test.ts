@@ -2,7 +2,7 @@ import app from ".";
 import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
 import { createTestDb } from "./test/test-db";
 import { Database } from "bun:sqlite";
-import { loginReq, logoutReq, signupReq } from "./test/test-helpers";
+import { authReq, loginReq, logoutReq, refreshReq, signupReq } from "./test/test-helpers";
 import { BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
 
 let db: BunSQLiteDatabase;
@@ -121,5 +121,68 @@ describe("logout endpoint", () => {
 
     const cookies = res.headers.get("set-cookie");
     expect(cookies).toMatch(/refreshToken=;/);
+  });
+});
+
+describe("refresh endpoint", () => {
+  beforeEach(async () => {
+    const req = signupReq();
+    const res = await app.fetch(req);
+    expect(res.status).toBe(200);
+  });
+
+  it("should refresh tokens successfully", async () => {
+    const loginResponse = await app.fetch(loginReq());
+    expect(loginResponse.status).toBe(200);
+    const refreshTokenCookie = loginResponse.headers.get("set-cookie")!.split(";")[0];
+
+    const rReq = refreshReq(refreshTokenCookie);
+
+    const refreshRes = await app.fetch(rReq);
+    const json = await refreshRes.json();
+    expect(refreshRes.status).toBe(200);
+
+    expect(json).toEqual({
+      accessToken: expect.any(String),
+    });
+  });
+
+  it("should return 401 for invalid refresh token", async () => {
+    const fakeRefreshTokenCookie = "refreshToken=invalid.token.here";
+    const rReq = refreshReq(fakeRefreshTokenCookie);
+
+    const refreshRes = await app.fetch(rReq);
+    expect(refreshRes.status).toBe(401);
+    expect(await refreshRes.text()).toBe("Unauthorized");
+  });
+});
+
+describe("auth/me endpoint", () => {
+  let accessToken: string;
+
+  beforeEach(async () => {
+    const req = signupReq();
+    const res = await app.fetch(req);
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    accessToken = json.accessToken;
+  });
+
+  it("should get current user successfully", async () => {
+    const req = authReq(accessToken);
+    const res = await app.fetch(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json).toEqual({
+      user: { id: expect.any(String), email: "test@test.com" },
+    });
+  });
+
+  it("should return 401 for missing/invalid access token", async () => {
+    const req = authReq("invalid.token.here");
+    const res = await app.fetch(req);
+    expect(res.status).toBe(401);
+    expect(await res.text()).toBe("Unauthorized");
   });
 });

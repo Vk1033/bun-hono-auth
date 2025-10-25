@@ -52,6 +52,22 @@ app
       return c.json({ errors: ["Internal Server Error"] }, 500);
     }
   })
+  .post("/api/refresh", async (c) => {
+    const payload = c.get("jwtPayload");
+    try {
+      const user = getUserById(db, payload.sub);
+      if (!user) {
+        return c.json({ errors: ["User not found"] }, 404);
+      }
+      const newAccessToken = await generateAccessToken(user.id); // 15 minutes
+      const newRefreshToken = await generateRefreshToken(user.id); // 7 days
+      setCookie(c, "refreshToken", newRefreshToken, cookieOpts);
+      return c.json({ accessToken: newAccessToken });
+    } catch (error) {
+      console.error("Error refreshing token:", error);
+      return c.json({ errors: ["Internal Server Error"] }, 500);
+    }
+  })
   .post("/api/logout", (c) => {
     deleteCookie(c, "refreshToken", {
       path: "/",
